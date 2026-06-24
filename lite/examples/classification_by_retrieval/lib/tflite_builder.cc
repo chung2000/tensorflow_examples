@@ -69,7 +69,7 @@ class TfLiteBuilderImpl : public TfLiteBuilder {
 
   int AddTensor(const std::string& name, TensorType type,
                 const std::vector<int32_t>& shape) override {
-    return AddTensor(name, type, shape, std::nullopt);
+    return AddTensor(name, type, shape, absl::nullopt);
   }
 
   int AddQuantizedTensor(
@@ -82,7 +82,7 @@ class TfLiteBuilderImpl : public TfLiteBuilder {
   int AddConstTensor(const std::string& name, TensorType type,
                      const std::vector<int32_t>& shape, const uint8_t* data,
                      size_t size) override {
-    return AddConstTensor(name, type, shape, data, size, std::nullopt);
+    return AddConstTensor(name, type, shape, data, size, absl::nullopt);
   }
 
   int AddQuantizedConstTensor(
@@ -121,14 +121,15 @@ class TfLiteBuilderImpl : public TfLiteBuilder {
   // implementation.
   absl::Status CloneMetadata(const Model& model);
 
-  int AddTensor(const std::string& name, TensorType type,
-                const std::vector<int32_t>& shape,
-                const std::optional<QuantizationParametersT>& quantization_opt);
+  int AddTensor(
+      const std::string& name, TensorType type,
+      const std::vector<int32_t>& shape,
+      const absl::optional<QuantizationParametersT>& quantization_opt);
 
   int AddConstTensor(
       const std::string& name, TensorType type,
       const std::vector<int32_t>& shape, const uint8_t* data, size_t size,
-      const std::optional<QuantizationParametersT>& quantization_opt);
+      const absl::optional<QuantizationParametersT>& quantization_opt);
 
   FlatBufferBuilder* fbb_;
   std::vector<Offset<Buffer>> buffer_vector_;
@@ -243,7 +244,7 @@ absl::Status TfLiteBuilderImpl::CloneOperators(const Model& model) {
 
 int TfLiteBuilderImpl::AddTensor(
     const std::string& name, TensorType type, const std::vector<int32_t>& shape,
-    const std::optional<QuantizationParametersT>& quantization_opt) {
+    const absl::optional<QuantizationParametersT>& quantization_opt) {
   const int buffer_index = buffer_vector_.size();
   buffer_vector_.push_back(CreateBuffer(*fbb_));
   const int tensor_index = tensor_vector_.size();
@@ -259,7 +260,7 @@ int TfLiteBuilderImpl::AddTensor(
 int TfLiteBuilderImpl::AddConstTensor(
     const std::string& name, TensorType type, const std::vector<int32_t>& shape,
     const uint8_t* data, size_t size,
-    const std::optional<QuantizationParametersT>& quantization_opt) {
+    const absl::optional<QuantizationParametersT>& quantization_opt) {
   const int buffer_index = buffer_vector_.size();
   buffer_vector_.push_back(CreateBuffer(*fbb_, fbb_->CreateVector(data, size)));
   const int tensor_index = tensor_vector_.size();

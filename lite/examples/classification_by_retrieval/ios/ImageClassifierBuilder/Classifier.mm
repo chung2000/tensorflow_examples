@@ -14,7 +14,7 @@
 
 #import "ios/ImageClassifierBuilder/Classifier.h"
 
-#include "base/types.h"
+#include <cstdint>
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_split.h"
