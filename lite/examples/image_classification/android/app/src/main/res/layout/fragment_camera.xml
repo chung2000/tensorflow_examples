@@ -1,4 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?><!--
+<?xml version="1.0" encoding="utf-8"?>
+<!--
     ~ Copyright 2022 The TensorFlow Authors. All Rights Reserved.
     ~
     ~ Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,39 +14,144 @@
     ~ See the License for the specific language governing permissions and
     ~ limitations under the License.
 -->
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/camera_container"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
 
     <androidx.camera.view.PreviewView
-        android:id="@+id/view_finder"
+        android:id="@+id/viewFinder"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:scaleType="fillStart" />
+        app:scaleType="fillCenter" />
 
-    <include
-        android:id="@+id/bottom_sheet_layout"
-        layout="@layout/info_bottom_sheet" />
+    <TextView
+        android:id="@+id/tvGuide"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="100dp"
+        android:background="#99000000"
+        android:padding="16dp"
+        android:text="화면을 터치해 초점을 맞추고\n촬영 버튼을 눌러주세요."
+        android:textAlignment="center"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerview_results"
+    <LinearLayout
+        android:id="@+id/buttonContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="top"
-        android:layout_marginBottom="@dimen/bottom_sheet_peek_height"
-        android:background="@color/bottom_sheet_background"
-        android:clipToPadding="true"
-        android:padding="@dimen/bottom_sheet_padding"
-        app:layout_anchor="@id/bottom_sheet_layout"
-        app:layout_anchorGravity="top"
-        app:layout_behavior="com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior" />
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingBottom="50dp"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <ImageButton
+            android:id="@+id/galleryButton"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_marginEnd="30dp"
+            android:background="@drawable/bg_circle_white"
+            android:contentDescription="갤러리"
+            android:padding="15dp"
+            android:scaleType="fitCenter"
+            android:src="@android:drawable/ic_menu_gallery"
+            app:tint="#333333" />
+
+        <ImageButton
+            android:id="@+id/captureButton"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:background="@drawable/bg_circle_white"
+            android:contentDescription="촬영"
+            android:padding="20dp"
+            android:scaleType="fitCenter"
+            android:src="@android:drawable/ic_menu_camera"
+            app:tint="#333333" />
+
+        <ImageButton
+            android:id="@+id/systemCameraButton"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_marginStart="30dp"
+            android:background="@drawable/bg_circle_white"
+            android:contentDescription="시스템 카메라"
+            android:padding="15dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_system_camera"
+            app:tint="#333333" />
+
+    </LinearLayout>
 
     <View
-        android:layout_width="wrap_content"
-        android:layout_height="1dp"
-        android:background="@color/bounding_box_color"
-        app:layout_anchor="@id/recyclerview_results"
-        app:layout_anchorGravity="bottom" />
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+        android:id="@+id/dimmingBackground"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#CC000000"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/resultPopup"
+        android:layout_width="320dp"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="10dp"
+        app:cardBackgroundColor="@android:color/white"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="분석 결과"
+                android:textColor="#333333"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:layout_marginBottom="16dp"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#EEEEEE"
+                android:layout_marginBottom="16dp"/>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerview_results"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+            <Button
+                android:id="@+id/closePopupButton"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:text="닫기 / 다시 촬영"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/white"
+                android:backgroundTint="#2196F3"
+                android:stateListAnimator="@null"/>
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

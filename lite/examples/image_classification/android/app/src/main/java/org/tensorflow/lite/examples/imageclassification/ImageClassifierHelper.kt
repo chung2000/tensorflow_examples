@@ -18,145 +18,109 @@ package org.tensorflow.lite.examples.imageclassification
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.os.SystemClock
 import android.util.Log
-import android.view.Surface
-import org.tensorflow.lite.gpu.CompatibilityList
-import org.tensorflow.lite.support.image.ImageProcessor
+import org.tensorflow.lite.DataType
+import org.tensorflow.lite.Interpreter
+import org.tensorflow.lite.support.common.FileUtil
 import org.tensorflow.lite.support.image.TensorImage
-import org.tensorflow.lite.support.image.ops.Rot90Op
-import org.tensorflow.lite.task.core.BaseOptions
-import org.tensorflow.lite.task.core.vision.ImageProcessingOptions
-import org.tensorflow.lite.task.vision.classifier.Classifications
-import org.tensorflow.lite.task.vision.classifier.ImageClassifier
+import java.nio.MappedByteBuffer
+import kotlin.math.exp
 
 class ImageClassifierHelper(
-    var threshold: Float = 0.5f,
+    var threshold: Float = 0.5f, // 사진 촬영이므로 기준을 조금 낮춰도 됩니다 (필터가 이미 강력함)
     var numThreads: Int = 2,
-    var maxResults: Int = 3,
-    var currentDelegate: Int = 0,
-    var currentModel: Int = 0,
     val context: Context,
     val imageClassifierListener: ClassifierListener?
 ) {
-    private var imageClassifier: ImageClassifier? = null
+    private var interpreter: Interpreter? = null
+    private val labels = listOf("여드름", "아토피 피부염", "정상", "건선", "주사(로사시아)", "지루성 피부염")
 
-    init {
-        setupImageClassifier()
+    init { setupImageClassifier() }
+
+    private fun setupImageClassifier() {
+        try {
+            val modelBuffer: MappedByteBuffer = FileUtil.loadMappedFile(context, "model_float16.tflite")
+            val options = Interpreter.Options().setNumThreads(numThreads)
+            interpreter = Interpreter(modelBuffer, options)
+        } catch (e: Exception) {
+            imageClassifierListener?.onError("모델 로드 실패: ${e.message}")
+        }
+    }
+
+    // 사진 한 장을 분석하는 함수 (Rotation 인자는 TensorImage 처리 방식에 따라 사용될 수 있음)
+    fun classify(bitmap: Bitmap, rotation: Int) {
+        if (interpreter == null) return
+
+        var inferenceTime = SystemClock.uptimeMillis()
+
+        // [장치 1] 피부색 필터링
+        // 찍은 사진이 피부가 아니라면(배경 등) 분석 거부
+        if (!isLikelySkinColor(bitmap)) {
+            imageClassifierListener?.onResults(emptyList(), 0)
+            return
+        }
+
+        // 전처리: 모델 입력 크기(224x224)로 변환
+        val resizedBitmap = Bitmap.createScaledBitmap(bitmap, 224, 224, true)
+        val tensorImage = TensorImage(DataType.FLOAT32)
+        tensorImage.load(resizedBitmap)
+
+        val output = Array(1) { FloatArray(labels.size) }
+        interpreter?.run(tensorImage.buffer, output)
+
+        inferenceTime = SystemClock.uptimeMillis() - inferenceTime
+
+        val rawLogits = output[0]
+        val maxLogit = rawLogits.maxOrNull() ?: 0f
+
+        Log.d("Classifier", "Capture Mode Max Logit: $maxLogit")
+
+        // [장치 2] 수치 필터링 (배경 오진 차단)
+        // 로그에서 확인했던 수치(약 400~500)를 기준으로 설정
+        if (maxLogit < 500.0f) {
+            imageClassifierListener?.onResults(emptyList(), inferenceTime)
+            return
+        }
+
+        val probabilities = softmax(rawLogits)
+
+        // 결과 리스트 생성 (버퍼 없이 즉시 반환)
+        val results = probabilities.mapIndexed { index, score ->
+            Recognition(labels[index], score)
+        }.sortedByDescending { it.confidence }
+
+        imageClassifierListener?.onResults(results, inferenceTime)
+    }
+
+    private fun isLikelySkinColor(bitmap: Bitmap): Boolean {
+        val centerX = bitmap.width / 2
+        val centerY = bitmap.height / 2
+        val pixel = bitmap.getPixel(centerX, centerY)
+        val r = Color.red(pixel)
+        val g = Color.green(pixel)
+        val b = Color.blue(pixel)
+
+        // RGB 피부색 간이 조건
+        return (r > g) && (r > b) && (r > 60)
+    }
+
+    private fun softmax(logits: FloatArray): FloatArray {
+        val max = logits.maxOrNull() ?: 0f
+        val expValues = logits.map { exp((it - max).toDouble()).toFloat() }
+        val sum = expValues.sum()
+        return expValues.map { it / sum }.toFloatArray()
     }
 
     fun clearImageClassifier() {
-        imageClassifier = null
+        interpreter?.close()
+        interpreter = null
     }
 
-    private fun setupImageClassifier() {
-        val optionsBuilder = ImageClassifier.ImageClassifierOptions.builder()
-            .setScoreThreshold(threshold)
-            .setMaxResults(maxResults)
-
-        val baseOptionsBuilder = BaseOptions.builder().setNumThreads(numThreads)
-
-        when (currentDelegate) {
-            DELEGATE_CPU -> {
-                // Default
-            }
-            DELEGATE_GPU -> {
-                if (CompatibilityList().isDelegateSupportedOnThisDevice) {
-                    baseOptionsBuilder.useGpu()
-                } else {
-                    imageClassifierListener?.onError("GPU is not supported on this device")
-                }
-            }
-            DELEGATE_NNAPI -> {
-                baseOptionsBuilder.useNnapi()
-            }
-        }
-
-        optionsBuilder.setBaseOptions(baseOptionsBuilder.build())
-
-        val modelName =
-            when (currentModel) {
-                MODEL_MOBILENETV1 -> "mobilenetv1.tflite"
-                MODEL_EFFICIENTNETV0 -> "efficientnet-lite0.tflite"
-                MODEL_EFFICIENTNETV1 -> "efficientnet-lite1.tflite"
-                MODEL_EFFICIENTNETV2 -> "efficientnet-lite2.tflite"
-                else -> "mobilenetv1.tflite"
-            }
-
-        try {
-            imageClassifier =
-                ImageClassifier.createFromFileAndOptions(context, modelName, optionsBuilder.build())
-        } catch (e: IllegalStateException) {
-            imageClassifierListener?.onError(
-                "Image classifier failed to initialize. See error logs for details"
-            )
-            Log.e(TAG, "TFLite failed to load model with error: " + e.message)
-        }
-    }
-
-    fun classify(image: Bitmap, rotation: Int) {
-        if (imageClassifier == null) {
-            setupImageClassifier()
-        }
-
-        // Inference time is the difference between the system time at the start and finish of the
-        // process
-        var inferenceTime = SystemClock.uptimeMillis()
-
-        // Create preprocessor for the image.
-        // See https://www.tensorflow.org/lite/inference_with_metadata/
-        //            lite_support#imageprocessor_architecture
-        val imageProcessor =
-            ImageProcessor.Builder()
-                .build()
-
-        // Preprocess the image and convert it into a TensorImage for classification.
-        val tensorImage = imageProcessor.process(TensorImage.fromBitmap(image))
-
-        val imageProcessingOptions = ImageProcessingOptions.builder()
-            .setOrientation(getOrientationFromRotation(rotation))
-            .build()
-
-        val results = imageClassifier?.classify(tensorImage, imageProcessingOptions)
-        inferenceTime = SystemClock.uptimeMillis() - inferenceTime
-        imageClassifierListener?.onResults(
-            results,
-            inferenceTime
-        )
-    }
-
-    // Receive the device rotation (Surface.x values range from 0->3) and return EXIF orientation
-    // http://jpegclub.org/exif_orientation.html
-    private fun getOrientationFromRotation(rotation: Int) : ImageProcessingOptions.Orientation {
-        when (rotation) {
-            Surface.ROTATION_270 ->
-                return ImageProcessingOptions.Orientation.BOTTOM_RIGHT
-            Surface.ROTATION_180 ->
-                return ImageProcessingOptions.Orientation.RIGHT_BOTTOM
-            Surface.ROTATION_90 ->
-                return ImageProcessingOptions.Orientation.TOP_LEFT
-            else ->
-                return ImageProcessingOptions.Orientation.RIGHT_TOP
-        }
-    }
-
+    data class Recognition(val label: String, val confidence: Float)
     interface ClassifierListener {
+        fun onResults(results: List<Recognition>?, inferenceTime: Long)
         fun onError(error: String)
-        fun onResults(
-            results: List<Classifications>?,
-            inferenceTime: Long
-        )
-    }
-
-    companion object {
-        const val DELEGATE_CPU = 0
-        const val DELEGATE_GPU = 1
-        const val DELEGATE_NNAPI = 2
-        const val MODEL_MOBILENETV1 = 0
-        const val MODEL_EFFICIENTNETV0 = 1
-        const val MODEL_EFFICIENTNETV1 = 2
-        const val MODEL_EFFICIENTNETV2 = 3
-
-        private const val TAG = "ImageClassifierHelper"
     }
 }
