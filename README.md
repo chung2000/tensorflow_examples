@@ -34,3 +34,10 @@ To file an issue, use the tracker in the
 ## License
 
 [Apache License 2.0](LICENSE)
+
+## Skin Classification (Android)
+
+<p align="center">
+  <img src="screenshots/skin_classification_result.jpg" width="300" alt="분석 결과 화면 예시" /><br />
+  <sub>분석 결과 화면 예시 — 소스는 <a href="https://github.com/chung2000/tensorflow_examples/tree/skin_classification">skin_classification</a> 브랜치 참고</sub>
+</p>
