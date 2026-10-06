@@ -44,6 +44,12 @@ It analyzes a skin photo taken with the camera using `model_float16.tflite` and 
 - **Built on:** Google's TensorFlow Lite `image_classification` Android sample (Kotlin), adapted for skin classification
 - **Source:** [`skin_classification` branch](https://github.com/chung2000/tensorflow_examples/tree/skin_classification/lite/examples/image_classification/android)
 
+### What I built on top of the sample
+
+- Redesigned the camera screen UI.
+- Built the buttons and the result screen that shows each class's probability.
+- Connected the button action to the model: pressing a button runs inference on the captured image and shows the result.
+
 <p align="center">
   <img src="screenshots/skin_classification_result.jpg" width="300" alt="Result screen" /><br />
   <sub>Result screen</sub>
