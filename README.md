@@ -37,7 +37,16 @@ To file an issue, use the tracker in the
 
 ## Skin Classification (Android)
 
+An Android app that classifies skin conditions **on-device** with TensorFlow Lite.
+It analyzes a skin photo taken with the camera using `model_float16.tflite` and shows the probability for each of 6 classes.
+
+- **Classes:** acne, atopic dermatitis, normal, psoriasis, rosacea, seborrheic dermatitis
+- **Built on:** Google's TensorFlow Lite `image_classification` Android sample (Kotlin), adapted for skin classification
+- **Source:** [`skin_classification` branch](https://github.com/chung2000/tensorflow_examples/tree/skin_classification/lite/examples/image_classification/android)
+
 <p align="center">
-  <img src="screenshots/skin_classification_result.jpg" width="300" alt="분석 결과 화면 예시" /><br />
-  <sub>분석 결과 화면 예시 — 소스는 <a href="https://github.com/chung2000/tensorflow_examples/tree/skin_classification">skin_classification</a> 브랜치 참고</sub>
+  <img src="screenshots/skin_classification_result.jpg" width="300" alt="Result screen" /><br />
+  <sub>Result screen</sub>
 </p>
+
+> ⚠️ For reference only. This app does not replace a medical diagnosis.
